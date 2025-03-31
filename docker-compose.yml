@@ -1,0 +1,126 @@
+version: "3.8"
+
+services:
+# Infra services
+  cassandra-node-0:
+    image: cassandra
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
+      - CASSANDRA_CLUSTER_NAME=MyCluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - HEAP_NEWSIZE=128M
+      - MAX_HEAP_SIZE=1024M
+    ports:
+      - "7000:7000"   # 노드간 클러스터 내부 통신
+      - "7001:7001"   # 노드간 보안 통신에 사용
+      - "9042:9042"   # CQL 클라이언트와 통신
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 10s
+      timeout: 10s
+      retries: 50
+  
+  cassandra-node-1:
+    image: cassandra
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
+      - CASSANDRA_CLUSTER_NAME=MyCluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - HEAP_NEWSIZE=128M
+      - MAX_HEAP_SIZE=1024M
+    ports:
+      - "17000:7000"
+      - "17001:7001"
+      - "19042:9042"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 10s
+      timeout: 10s
+      retries: 50
+
+  cassandra-node-2:
+    image: cassandra
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
+      - CASSANDRA_CLUSTER_NAME=MyCluster
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_DC=dc1
+      - HEAP_NEWSIZE=128M
+      - MAX_HEAP_SIZE=1024M
+    ports:
+      - "27000:7000"
+      - "27001:7001"
+      - "29042:9042"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
+      interval: 10s
+      timeout: 10s
+      retries: 50
+
+  myredis:
+    image: redis
+    hostname: myredis
+    ports:
+      - "6379:6379"
+    depends_on:
+      cassandra-node-0:
+        condition: service_healthy
+      cassandra-node-1:
+        condition: service_healthy
+      cassandra-node-2:
+        condition: service_healthy
+
+  mysql-server:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=1234
+    ports:
+      - "3306:3306"
+    depends_on:
+      - myredis
+
+
+# Domain Services
+  member-service:
+    image: member-service
+    ports:
+      - "8081:8080"
+    depends_on:
+      - mysql-server
+
+  payment-service:
+    image: payment-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      - mysql-server
+
+  delivery-service:
+    image: delivery-service
+    ports:
+      - "8083:8080"
+    depends_on:
+      - mysql-server
+
+  search-service:
+    image: search-service
+    ports:
+      - "8084:8080"
+    depends_on:
+      - mysql-server
+
+  catalog-service:
+    image: catalog-service
+    ports:
+      - "8085:8080"
+    depends_on:
+      - mysql-server
+
+  order-service:
+    image: order-service
+    ports:
+      - "8086:8080"
+    depends_on:
+      - mysql-server

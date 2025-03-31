@@ -1,0 +1,17 @@
+
+spring:
+  cassandra:
+    keyspace-name: catalog
+    port: 9042
+    contact-points: cassandra-node-0
+    local-datacenter: dc1
+    schema-action: create-if-not-exists
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql-server:3306/my_db?useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: '1234'
+  jpa:
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update

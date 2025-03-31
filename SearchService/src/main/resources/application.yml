@@ -1,0 +1,6 @@
+
+spring:
+  data:
+    redis:
+      host: myredis
+      port: 6379
