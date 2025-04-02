@@ -5,7 +5,7 @@ services:
   cassandra-node-0:
     image: cassandra
     environment:
-      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
+      - CASSANDRA_SEEDS=cassandra-node-0
       - CASSANDRA_CLUSTER_NAME=MyCluster
       - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
       - CASSANDRA_DC=dc1
@@ -20,44 +20,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 50
-  
-  cassandra-node-1:
-    image: cassandra
-    environment:
-      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
-      - CASSANDRA_CLUSTER_NAME=MyCluster
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
-      - CASSANDRA_DC=dc1
-      - HEAP_NEWSIZE=128M
-      - MAX_HEAP_SIZE=1024M
-    ports:
-      - "17000:7000"
-      - "17001:7001"
-      - "19042:9042"
-    healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
-      interval: 10s
-      timeout: 10s
-      retries: 50
-
-  cassandra-node-2:
-    image: cassandra
-    environment:
-      - CASSANDRA_SEEDS=cassandra-node-0,cassandra-node-1,cassandra-node-2
-      - CASSANDRA_CLUSTER_NAME=MyCluster
-      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
-      - CASSANDRA_DC=dc1
-      - HEAP_NEWSIZE=128M
-      - MAX_HEAP_SIZE=1024M
-    ports:
-      - "27000:7000"
-      - "27001:7001"
-      - "29042:9042"
-    healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces" ]
-      interval: 10s
-      timeout: 10s
-      retries: 50
 
   myredis:
     image: redis
@@ -66,10 +28,6 @@ services:
       - "6379:6379"
     depends_on:
       cassandra-node-0:
-        condition: service_healthy
-      cassandra-node-1:
-        condition: service_healthy
-      cassandra-node-2:
         condition: service_healthy
 
   mysql-server:
@@ -81,8 +39,64 @@ services:
     depends_on:
       - myredis
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "22181:2181"
+    healthcheck:
+      test: nc -z localhost 2181 || exit 1
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 10s
 
-# Domain Services
+  kafka1:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "19092:19092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:9092,EXTERNAL://localhost:19092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "19093:19093"
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:9092,EXTERNAL://localhost:19093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka3:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "19094:19094"
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:9092,EXTERNAL://localhost:19094
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+# Domain services
+
   member-service:
     image: member-service
     ports:
